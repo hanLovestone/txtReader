@@ -1,37 +1,38 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
-struct BookImporter: View {
-    @Environment(\.dismiss) private var dismiss
-    @StateObject private var bookshelf = Bookshelf.shared
-    @State private var showingDocumentPicker = false
+struct BookshelfView: View {
+    @StateObject private var appState = AppState.shared
+    @State private var showingFilePicker = false
     @State private var showingAlert = false
     @State private var alertMessage = ""
     
     var body: some View {
         NavigationView {
-            VStack {
-                Text("选择要导入的TXT文件")
-                    .font(.headline)
-                    .padding()
-                
-                Button(action: { showingDocumentPicker = true }) {
-                    Label("选择文件", systemImage: "doc.badge.plus")
-                        .font(.title2)
+            Group {
+                if appState.bookRepository.books.isEmpty {
+                    EmptyBookshelfView(showingFilePicker: $showingFilePicker)
+                } else {
+                    ScrollView {
+                        BookGridView(books: appState.bookRepository.books)
+                    }
+                    .refreshable {
+                        await appState.bookRepository.refreshBooks()
+                    }
                 }
-                .buttonStyle(.bordered)
-                .padding()
             }
-            .navigationTitle("导入书籍")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("我的书架")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") { dismiss() }
+                if !appState.bookRepository.books.isEmpty {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: { showingFilePicker = true }) {
+                            Image(systemName: "plus")
+                        }
+                    }
                 }
             }
         }
         .fileImporter(
-            isPresented: $showingDocumentPicker,
+            isPresented: $showingFilePicker,
             allowedContentTypes: [.text],
             allowsMultipleSelection: true
         ) { result in
@@ -70,7 +71,7 @@ struct BookImporter: View {
                     }
                     
                     try FileManager.default.copyItem(at: url, to: destination)
-                    bookshelf.addBook(
+                    appState.bookRepository.addBook(
                         title: fileName.replacingOccurrences(of: ".txt", with: ""),
                         filePath: destination.path
                     )
@@ -85,8 +86,4 @@ struct BookImporter: View {
     private func getDocumentsDirectory() -> URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
-}
-
-#Preview {
-    BookImporter()
 } 

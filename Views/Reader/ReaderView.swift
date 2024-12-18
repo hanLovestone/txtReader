@@ -35,6 +35,78 @@ struct ReaderView: View {
             .foregroundColor(appState.readerSettings.textColor)
     }
     
+    private func makeHorizontalContent() -> some View {
+        Text(contentManager.currentPage)
+            .font(.system(size: appState.readerSettings.fontSize))
+            .lineSpacing(appState.readerSettings.lineSpacing)
+            .foregroundColor(appState.readerSettings.textColor)
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .offset(x: horizontalDragOffset)
+    }
+    
+    private func makeScrollViewContent(geometry: GeometryProxy) -> some View {
+        makeVerticalContent()
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                GeometryReader { geo in
+                    Color.clear
+                        .preference(
+                            key: ScrollOffsetPreferenceKey.self,
+                            value: geo.frame(in: .global).minY
+                        )
+                        .onAppear {
+                            contentManager.updateContent(
+                                for: 0,
+                                viewportHeight: geometry.size.height
+                            )
+                        }
+                }
+            )
+    }
+    
+    private func makeBottomToolbar() -> some View {
+        VStack(spacing: 8) {
+            BookProgressView(
+                progress: contentManager.getCurrentProgress(),
+                height: 2,
+                backgroundColor: appState.readerSettings.textColor.opacity(0.1),
+                foregroundColor: appState.readerSettings.textColor.opacity(0.8)
+            )
+            
+            HStack {
+                Text("\(Int(contentManager.getCurrentProgress() * 100))%")
+                    .font(.caption2)
+                    .foregroundColor(appState.readerSettings.textColor)
+                
+                Spacer()
+                
+                BookReaderToolbar(
+                    book: book,
+                    showingSettings: $showingSettings,
+                    onJumpToLocation: { location in
+                        contentManager.jumpToLocation(location)
+                    }
+                )
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 4)
+        .background(appState.readerSettings.backgroundColor)
+    }
+    
+    private func makeErrorView() -> some View {
+        VStack {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.largeTitle)
+                .foregroundColor(.red)
+            Text(contentManager.errorMessage)
+                .foregroundColor(.red)
+                .padding()
+        }
+    }
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -42,64 +114,25 @@ struct ReaderView: View {
                     .ignoresSafeArea()
                 
                 if contentManager.hasError {
-                    VStack {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.largeTitle)
-                            .foregroundColor(.red)
-                        Text(contentManager.errorMessage)
-                            .foregroundColor(.red)
-                            .padding()
-                    }
+                    makeErrorView()
                 } else {
                     VStack(spacing: 0) {
                         if appState.readerSettings.pageTurnDirection == .horizontal {
-                            // 水平翻页模式
-                            Text(contentManager.currentPage)
-                                .font(.system(size: appState.readerSettings.fontSize))
-                                .lineSpacing(appState.readerSettings.lineSpacing)
-                                .foregroundColor(appState.readerSettings.textColor)
-                                .padding()
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                                .offset(x: horizontalDragOffset)
+                            makeHorizontalContent()
                         } else {
-                            // 垂直滚动模式
                             ScrollView(.vertical, showsIndicators: false) {
-                                makeVerticalContent()
-                                    .padding()
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(
-                                        GeometryReader { geo in
-                                            Color.clear
-                                                .preference(
-                                                    key: ScrollOffsetPreferenceKey.self,
-                                                    value: geo.frame(in: .global).minY
-                                                )
-                                                .onAppear {
-                                                    contentManager.updateContent(
-                                                        for: 0,
-                                                        viewportHeight: geometry.size.height
-                                                    )
-                                                }
-                                        }
-                                    )
+                                makeScrollViewContent(geometry: geometry)
                             }
                             .frame(maxHeight: .infinity)
                             .onPreferenceChange(ScrollOffsetPreferenceKey.self) { offset in
-                                contentManager.updateContent(for: offset, viewportHeight: geometry.size.height)
+                                contentManager.updateContent(
+                                    for: offset,
+                                    viewportHeight: geometry.size.height
+                                )
                             }
                         }
                         
-                        // 底部信息栏
-                        VStack(spacing: 8) {
-                            ProgressView(value: contentManager.getCurrentProgress())
-                                .frame(height: 2)
-                            Text("\(Int(contentManager.getCurrentProgress() * 100))%")
-                                .font(.caption2)
-                                .foregroundColor(appState.readerSettings.textColor)
-                                .fixedSize()
-                        }
-                        .padding(.horizontal)
-                        .padding(.vertical, 4)
+                        makeBottomToolbar()
                     }
                 }
             }
@@ -141,7 +174,7 @@ struct ReaderView: View {
             }
         )
         .sheet(isPresented: $showingSettings) {
-            ReaderSettingsView(settings: appState.readerSettings)
+            BookReaderSettings(settings: appState.readerSettings)
         }
         .onDisappear {
             appState.bookRepository.updateReadingProgress(

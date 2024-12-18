@@ -3,11 +3,9 @@ import SwiftUI
 class AppState: ObservableObject {
     static let shared = AppState()
     
-    @Published var readerSettings: ReaderSettings
-    @Published var bookRepository: BookRepository
+    @Published var bookRepository = BookRepository.shared
+    @Published var readerSettings = ReaderSettings.shared
+    @Published var bookmarkManager = BookmarkManager.shared
     
-    private init() {
-        self.readerSettings = ReaderSettings.shared
-        self.bookRepository = BookRepository.shared
-    }
+    private init() {}
 } 

@@ -13,6 +13,7 @@ class TextContentManager: ObservableObject {
     @Published var isVerticalMode: Bool = false
     @Published var hasError: Bool = false
     @Published var errorMessage: String = ""
+    private var lastViewportHeight: CGFloat = 0
     
     private let charsPerPage: Int = 2000
     private let initialLoadSize: Int = 3000
@@ -73,6 +74,7 @@ class TextContentManager: ObservableObject {
     
     func updateContent(for scrollOffset: CGFloat, viewportHeight: CGFloat) {
         loadTask?.cancel()
+        lastViewportHeight = viewportHeight
         
         loadTask = Task { @MainActor in
             let currentTime = CACurrentMediaTime()
@@ -150,4 +152,16 @@ class TextContentManager: ObservableObject {
         isVerticalMode = false
         loadCurrentPage()
     }
-} 
+    
+    func jumpToLocation(_ location: Int) {
+        if !isVerticalMode {
+            // 水平翻页模式
+            currentLocation = location
+            loadCurrentPage()
+        } else {
+            // 垂直滚动模式
+            currentLocation = location
+            updateContent(for: 0, viewportHeight: lastViewportHeight)
+        }
+    }
+}

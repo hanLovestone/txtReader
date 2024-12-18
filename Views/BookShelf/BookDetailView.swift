@@ -7,18 +7,26 @@ struct BookDetailView: View {
     @State private var showingDeleteAlert = false
     @State private var showingShareSheet = false
     
+    private var fileSize: Int {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: book.filePath),
+              let size = attributes[.size] as? Int else {
+            return 0
+        }
+        return size
+    }
+    
     var body: some View {
         NavigationView {
             List {
                 Section("基本信息") {
                     LabeledContent("标题", value: book.title)
-                    LabeledContent("文件大小", value: book.formattedFileSize)
-                    LabeledContent("添加时间", value: book.formattedAddedDate)
+                    LabeledContent("文件大小", value: ReaderUtils.formatFileSize(fileSize))
+                    LabeledContent("添加时间", value: ReaderUtils.formatDate(book.addedDate))
                     LabeledContent("文件路径", value: book.filePath)
                 }
                 
                 Section("阅读记录") {
-                    LabeledContent("最后阅读时间", value: book.formattedLastReadDate)
+                    LabeledContent("最后阅读时间", value: ReaderUtils.formatRelativeDate(book.lastReadDate ?? Date()))
                     if let progress = calculateProgress() {
                         LabeledContent("阅读进度", value: "\(Int(progress * 100))%")
                     }
@@ -34,7 +42,7 @@ struct BookDetailView: View {
                     Button(role: .destructive) {
                         showingDeleteAlert = true
                     } label: {
-                        Label("删除书籍", systemImage: "trash")
+                        Label("删��书籍", systemImage: "trash")
                     }
                 }
             }
@@ -63,11 +71,7 @@ struct BookDetailView: View {
     }
     
     private func calculateProgress() -> Double? {
-        guard let attributes = try? FileManager.default.attributesOfItem(atPath: book.filePath),
-              let fileSize = attributes[.size] as? Int,
-              fileSize > 0 else {
-            return nil
-        }
+        guard fileSize > 0 else { return nil }
         return Double(book.lastReadLocation) / Double(fileSize)
     }
     

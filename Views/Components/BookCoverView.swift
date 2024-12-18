@@ -30,7 +30,18 @@ struct BookCoverView: View {
                             .foregroundColor(.primary)
                             .multilineTextAlignment(.center)
                             .padding()
-                        Spacer()
+                        
+                        if let progress = calculateProgress() {
+                            BookProgressView(
+                                progress: progress,
+                                showPercentage: false,
+                                height: 3,
+                                backgroundColor: .gray.opacity(0.1),
+                                foregroundColor: .blue.opacity(0.8)
+                            )
+                            .padding(.horizontal)
+                            .padding(.bottom, 8)
+                        }
                     }
                 )
             
@@ -62,6 +73,15 @@ struct BookCoverView: View {
         } message: {
             Text("确定要删除这本书吗？此操作无法撤销。")
         }
+    }
+    
+    private func calculateProgress() -> Double? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: book.filePath),
+              let fileSize = attributes[.size] as? Int,
+              fileSize > 0 else {
+            return nil
+        }
+        return Double(book.lastReadLocation) / Double(fileSize)
     }
 }
 

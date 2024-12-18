@@ -20,7 +20,6 @@ class TextContentManager: ObservableObject {
     private var lastUpdateTime: TimeInterval = 0
     private let minimumUpdateInterval: TimeInterval = 0.3
     private var isLoadingMore = false
-    
     private var loadTask: Task<Void, Never>?
     
     init(filePath: String) throws {
@@ -34,7 +33,7 @@ class TextContentManager: ObservableObject {
             
             self.content = try String(contentsOf: fileURL, encoding: .utf8)
             print("文件内容长度: \(self.content.count)")
-            self.totalPages = (content.count + charsPerPage - 1) / charsPerPage
+            self.totalPages = ReaderUtils.calculatePageCount(contentLength: content.count, charsPerPage: charsPerPage)
             loadInitialContent()
         } catch {
             hasError = true
@@ -43,7 +42,6 @@ class TextContentManager: ObservableObject {
         }
     }
     
-    // 创建一个带有错误信息的实例
     static func createWithError(_ message: String) -> TextContentManager {
         let manager = TextContentManager()
         manager.hasError = true
@@ -51,7 +49,6 @@ class TextContentManager: ObservableObject {
         return manager
     }
     
-    // 私有初始化方法，用于创建错误实例
     private init() {
         self.fileURL = nil
         self.content = ""
@@ -61,35 +58,8 @@ class TextContentManager: ObservableObject {
     
     private func loadInitialContent() {
         let endIndex = min(content.count, initialLoadSize)
-        displayedContent = String(content.prefix(endIndex))
+        displayedContent = ReaderUtils.extractPage(from: content, start: 0, length: endIndex)
         loadCurrentPage()
-    }
-    
-    private func appendContent() {
-        guard !isLoadingMore else { return }
-        isLoadingMore = true
-        
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { return }
-            
-            let currentLength = self.displayedContent.count
-            guard currentLength < self.content.count else {
-                DispatchQueue.main.async {
-                    self.isLoadingMore = false
-                }
-                return
-            }
-            
-            let nextEndIndex = min(self.content.count, currentLength + self.batchSize)
-            let startIndex = self.content.index(self.content.startIndex, offsetBy: currentLength)
-            let endIndex = self.content.index(self.content.startIndex, offsetBy: nextEndIndex)
-            let newContent = String(self.content[startIndex..<endIndex])
-            
-            DispatchQueue.main.async {
-                self.displayedContent += newContent
-                self.isLoadingMore = false
-            }
-        }
     }
     
     func loadCurrentPage() {
@@ -98,16 +68,12 @@ class TextContentManager: ObservableObject {
             return
         }
         
-        let start = content.index(content.startIndex, offsetBy: min(currentLocation, content.count))
-        let end = content.index(start, offsetBy: min(charsPerPage, content.count - currentLocation))
-        currentPage = String(content[start..<end])
+        currentPage = ReaderUtils.extractPage(from: content, start: currentLocation, length: charsPerPage)
     }
     
     func updateContent(for scrollOffset: CGFloat, viewportHeight: CGFloat) {
-        // 取消之前的任务
         loadTask?.cancel()
         
-        // 创建新任务
         loadTask = Task { @MainActor in
             let currentTime = CACurrentMediaTime()
             guard currentTime - lastUpdateTime >= minimumUpdateInterval else { return }
@@ -116,7 +82,6 @@ class TextContentManager: ObservableObject {
             let progress = max(0, min(1, -scrollOffset / max(1, viewportHeight)))
             readingProgress = progress
             
-            // 当滚动到接近末尾时加载更多内容
             if progress > 0.7 {
                 await loadMoreContent()
             }
@@ -133,18 +98,47 @@ class TextContentManager: ObservableObject {
             return
         }
         
-        // 在后台线程处理文本
         await Task.detached(priority: .userInitiated) {
             let nextEndIndex = min(self.content.count, currentLength + self.batchSize)
-            let startIndex = self.content.index(self.content.startIndex, offsetBy: currentLength)
-            let endIndex = self.content.index(self.content.startIndex, offsetBy: nextEndIndex)
-            let newContent = String(self.content[startIndex..<endIndex])
+            let newContent = ReaderUtils.extractPage(
+                from: self.content,
+                start: currentLength,
+                length: self.batchSize
+            )
             
             await MainActor.run {
                 self.displayedContent += newContent
                 self.isLoadingMore = false
             }
         }.value
+    }
+    
+    func nextPage() {
+        currentLocation = ReaderUtils.getNextPageLocation(
+            currentLocation: currentLocation,
+            charsPerPage: charsPerPage,
+            totalLength: content.count
+        )
+        loadCurrentPage()
+    }
+    
+    func previousPage() {
+        currentLocation = ReaderUtils.getPreviousPageLocation(
+            currentLocation: currentLocation,
+            charsPerPage: charsPerPage
+        )
+        loadCurrentPage()
+    }
+    
+    func getCurrentProgress() -> Double {
+        if !isVerticalMode {
+            return ReaderUtils.calculateProgress(
+                currentLocation: currentLocation,
+                totalLength: content.count
+            )
+        } else {
+            return readingProgress
+        }
     }
     
     func switchToVerticalMode() {
@@ -155,27 +149,5 @@ class TextContentManager: ObservableObject {
     func switchToHorizontalMode() {
         isVerticalMode = false
         loadCurrentPage()
-    }
-    
-    func nextPage() {
-        if currentLocation + charsPerPage < content.count {
-            currentLocation += charsPerPage
-            loadCurrentPage()
-        }
-    }
-    
-    func previousPage() {
-        if currentLocation >= charsPerPage {
-            currentLocation -= charsPerPage
-            loadCurrentPage()
-        }
-    }
-    
-    func getCurrentProgress() -> Double {
-        if !isVerticalMode {
-            return Double(currentLocation) / Double(max(1, content.count))
-        } else {
-            return readingProgress
-        }
     }
 } 

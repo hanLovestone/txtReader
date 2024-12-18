@@ -1,27 +1,25 @@
 import Foundation
-import SwiftUI
 
 class BookRepository: ObservableObject {
     static let shared = BookRepository()
-    private let defaults = UserDefaults.standard
-    private let booksKey = "savedBooks"
     
-    @Published var books: [Book] = []
+    @Published private(set) var books: [Book] = []
+    private let booksKey = "savedBooks"
     
     private init() {
         loadBooks()
     }
     
     private func loadBooks() {
-        if let data = defaults.data(forKey: booksKey),
-           let loadedBooks = try? JSONDecoder().decode([Book].self, from: data) {
-            self.books = loadedBooks
+        if let data = UserDefaults.standard.data(forKey: booksKey),
+           let savedBooks = try? JSONDecoder().decode([Book].self, from: data) {
+            self.books = savedBooks
         }
     }
     
     private func saveBooks() {
         if let data = try? JSONEncoder().encode(books) {
-            defaults.set(data, forKey: booksKey)
+            UserDefaults.standard.set(data, forKey: booksKey)
         }
     }
     
@@ -42,12 +40,19 @@ class BookRepository: ObservableObject {
         saveBooks()
     }
     
+    func updateReadingProgress(for book: Book, location: Int) {
+        if let index = books.firstIndex(where: { $0.id == book.id }) {
+            var updatedBook = book
+            updatedBook.updateReadingProgress(location: location)
+            books[index] = updatedBook
+            saveBooks()
+        }
+    }
+    
     @MainActor
     func refreshBooks() async {
         // 检查文件是否存在，移除不存在的书籍
-        books.removeAll { book in
-            !FileManager.default.fileExists(atPath: book.filePath)
-        }
+        books.removeAll { !$0.exists }
         saveBooks()
     }
 } 

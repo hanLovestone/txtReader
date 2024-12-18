@@ -1,6 +1,5 @@
 import SwiftUI
 
-// 添加 PreferenceKey 定义
 struct ScrollOffsetPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
@@ -146,6 +145,7 @@ struct ReaderView: View {
     }
 }
 
+// 添加预览支持
 #Preview {
     let testContent = """
     这是测试内容

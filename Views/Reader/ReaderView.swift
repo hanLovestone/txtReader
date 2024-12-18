@@ -18,6 +18,7 @@ struct ReaderView: View {
         self.book = book
         do {
             let manager = try TextContentManager(filePath: book.filePath)
+            manager.currentLocation = book.lastReadLocation
             self._contentManager = StateObject(wrappedValue: manager)
         } catch {
             let errorManager = TextContentManager.createWithError(
@@ -142,10 +143,15 @@ struct ReaderView: View {
         .sheet(isPresented: $showingSettings) {
             ReaderSettingsView(settings: appState.readerSettings)
         }
+        .onDisappear {
+            appState.bookRepository.updateReadingProgress(
+                for: book,
+                location: contentManager.currentLocation
+            )
+        }
     }
 }
 
-// 添加预览支持
 #Preview {
     let testContent = """
     这是测试内容

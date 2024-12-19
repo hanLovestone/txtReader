@@ -45,7 +45,7 @@ struct BookCoverView: View {
                     }
                 )
             
-            Text(book.title)
+            Text(book.filePath)
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .lineLimit(2)

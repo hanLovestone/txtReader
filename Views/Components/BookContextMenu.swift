@@ -12,23 +12,33 @@ struct BookContextMenu: View {
             Button {
                 showingDetail = true
             } label: {
-                Label("查看详情", systemImage: "info.circle")
+                Label("详细信息", systemImage: "info.circle")
             }
             
             Button {
                 showingShareSheet = true
             } label: {
-                Label("分享文件", systemImage: "square.and.arrow.up")
+                Label("分享", systemImage: "square.and.arrow.up")
             }
             
             Button(role: .destructive) {
                 showingDeleteAlert = true
             } label: {
-                Label("删除书籍", systemImage: "trash")
+                Label("删除", systemImage: "trash")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
-                .font(.title2)
+                .font(.title3)
+                .foregroundColor(.gray)
         }
     }
+}
+
+#Preview {
+    BookContextMenu(
+        book: Book(title: "测试书籍", filePath: "test.txt"),
+        showingDetail: .constant(false),
+        showingDeleteAlert: .constant(false),
+        showingShareSheet: .constant(false)
+    )
 } 

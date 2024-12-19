@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct BookReaderSettings: View {
-    @Environment(\.dismiss) private var dismiss
     @ObservedObject var settings: ReaderSettings
+    @Environment(\.dismiss) private var dismiss
     @State private var tempFontSize: CGFloat
     @State private var tempLineSpacing: CGFloat
     @State private var tempBackgroundColor: Color
@@ -21,6 +21,16 @@ struct BookReaderSettings: View {
     var body: some View {
         NavigationView {
             Form {
+                Section("预览") {
+                    Text("这是预览文本\n第二行文本")
+                        .font(.system(size: tempFontSize))
+                        .lineSpacing(tempLineSpacing)
+                        .foregroundColor(tempTextColor)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(tempBackgroundColor)
+                }
+                
                 Section("字体设置") {
                     VStack(alignment: .leading) {
                         HStack {

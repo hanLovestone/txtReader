@@ -7,6 +7,16 @@ struct BookshelfView: View {
     @State private var alertMessage = ""
     @State private var searchText = ""
     
+    private var filteredBooks: [Book] {
+        if searchText.isEmpty {
+            return appState.bookRepository.books
+        } else {
+            return appState.bookRepository.books.filter { book in
+                book.title.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+    
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -15,51 +25,52 @@ struct BookshelfView: View {
                         .padding(.vertical, 8)
                 }
                 
-                Group {
-                    if appState.bookRepository.books.isEmpty {
-                        EmptyBookshelfView(showingFilePicker: $showingFilePicker)
-                    } else {
-                        ScrollView {
-                            BookGridView(
-                                books: appState.bookRepository.filteredAndSortedBooks(
-                                    searchText: searchText
-                                )
-                            )
-                        }
-                        .refreshable {
-                            await appState.bookRepository.refreshBooks()
-                        }
-                    }
-                }
-            }
-            .navigationTitle("我的书架")
-            .toolbar {
-                if !appState.bookRepository.books.isEmpty {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        HStack {
-                            BookSortingMenu(
-                                sortOption: $appState.bookRepository.sortOption,
-                                ascending: $appState.bookRepository.sortAscending
-                            )
-                            Button(action: { showingFilePicker = true }) {
-                                Image(systemName: "plus")
+                if appState.bookRepository.books.isEmpty {
+                    EmptyBookshelfView(showingFilePicker: $showingFilePicker)
+                } else if filteredBooks.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                } else {
+                    ScrollView {
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.adaptive(minimum: 160), spacing: 16)
+                            ],
+                            spacing: 16
+                        ) {
+                            ForEach(filteredBooks) { book in
+                                NavigationLink {
+                                    ReaderView(book: book)
+                                } label: {
+                                    BookCoverView(book: book)
+                                }
                             }
                         }
+                        .padding(16)
                     }
                 }
             }
-        }
-        .background(
-            BookImporter(
-                isPresented: $showingFilePicker,
-                showingAlert: $showingAlert,
-                alertMessage: $alertMessage
+            .navigationTitle("书架")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingFilePicker = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .background(
+                BookImporter(
+                    isPresented: $showingFilePicker,
+                    showingAlert: $showingAlert,
+                    alertMessage: $alertMessage
+                )
             )
-        )
-        .alert("提示", isPresented: $showingAlert) {
-            Button("确定", role: .cancel) { }
-        } message: {
-            Text(alertMessage)
+            .alert("提示", isPresented: $showingAlert) {
+                Button("确定", role: .cancel) { }
+            } message: {
+                Text(alertMessage)
+            }
         }
     }
 } 

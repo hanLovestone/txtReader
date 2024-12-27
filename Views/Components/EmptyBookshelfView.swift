@@ -4,24 +4,31 @@ struct EmptyBookshelfView: View {
     @Binding var showingFilePicker: Bool
     
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Image(systemName: "books.vertical")
                 .font(.system(size: 60))
-                .foregroundColor(.secondary)
+                .foregroundColor(.gray)
             
             Text("书架空空如也")
                 .font(.title2)
+                .foregroundColor(.primary)
+            
+            Text("点击下方按钮添加书籍")
+                .font(.subheadline)
                 .foregroundColor(.secondary)
             
-            Button(action: { showingFilePicker = true }) {
-                Text("添加书籍")
+            Button {
+                showingFilePicker = true
+            } label: {
+                Label("添加书籍", systemImage: "plus")
                     .font(.headline)
-                    .foregroundColor(.white)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(10)
             }
+            .buttonStyle(.bordered)
+            .tint(.blue)
+            .padding(.top)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
     }
 }
 
